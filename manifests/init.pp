@@ -23,10 +23,11 @@ class apache (
   $default_ssl_crl_path = undef,
   $default_ssl_crl      = undef,
   $service_enable       = true,
+  $service_ensure       = 'running',
   $purge_configs        = true,
   $purge_vdir           = false,
   $serveradmin          = 'root@localhost',
-  $sendfile             = false,
+  $sendfile             = 'On',
   $error_documents      = false,
   $timeout              = '120',
   $httpd_dir            = $apache::params::httpd_dir,
@@ -38,6 +39,8 @@ class apache (
   $mpm_module           = $apache::params::mpm_module,
   $conf_template        = $apache::params::conf_template,
   $servername           = $apache::params::servername,
+  $manage_user          = true,
+  $manage_group         = true,
   $user                 = $apache::params::user,
   $group                = $apache::params::group,
   $keepalive            = $apache::params::keepalive,
@@ -46,10 +49,11 @@ class apache (
   $ports_file           = $apache::params::ports_file,
   $server_tokens        = 'OS',
   $server_signature     = 'On',
+  $package_ensure       = 'installed',
 ) inherits apache::params {
 
   package { 'httpd':
-    ensure => installed,
+    ensure => $package_ensure,
     name   => $apache::params::apache_name,
     notify => Class['Apache::Service'],
   }
@@ -60,22 +64,29 @@ class apache (
   if $mpm_module {
     validate_re($mpm_module, '(prefork|worker|itk)')
   }
+  validate_re($sendfile, [ '^[oO]n$' , '^[oO]ff$' ])
 
   # declare the web server user and group
   # Note: requiring the package means the package ought to create them and not puppet
-  group { $group:
-    ensure  => present,
-    require => Package['httpd']
+  validate_bool($manage_user)
+  if $manage_user {
+    user { $user:
+      ensure  => present,
+      gid     => $group,
+      require => Package['httpd'],
+    }
   }
-
-  user { $user:
-    ensure  => present,
-    gid     => $group,
-    require => Package['httpd'],
+  validate_bool($manage_group)
+  if $manage_group {
+    group { $group:
+      ensure  => present,
+      require => Package['httpd']
+    }
   }
 
   class { 'apache::service':
     service_enable => $service_enable,
+    service_ensure => $service_ensure,
   }
 
   # Deprecated backwards-compatibility

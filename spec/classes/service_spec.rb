@@ -10,7 +10,7 @@ describe 'apache::service', :type => :class do
       }
     end
     it { should contain_service("httpd").with(
-      'ensure'    => 'true',
+      'ensure'    => 'running',
       'enable'    => 'true'
       )
     }
@@ -18,7 +18,7 @@ describe 'apache::service', :type => :class do
     context "with $service_enable => true" do
       let (:params) {{ :service_enable => true }}
       it { should contain_service("httpd").with(
-        'ensure'    => 'true',
+        'ensure'    => 'running',
         'enable'    => 'true'
         )
       }
@@ -27,7 +27,7 @@ describe 'apache::service', :type => :class do
     context "with $service_enable => false" do
       let (:params) {{ :service_enable => false }}
       it { should contain_service("httpd").with(
-        'ensure'    => 'false',
+        'ensure'    => 'running',
         'enable'    => 'false'
         )
       }
@@ -37,10 +37,26 @@ describe 'apache::service', :type => :class do
       let (:params) {{ :service_enable => 'not-a-boolean' }}
 
       it 'should fail' do
-        expect {
-          should include_class('apache::service')
-        }.to raise_error(Puppet::Error, /is not a boolean/)
+        expect { subject }.to raise_error(Puppet::Error, /is not a boolean/)
       end
+    end
+
+    context "with $service_ensure => 'running'" do
+      let (:params) {{ :service_ensure => 'running', }}
+      it { should contain_service("httpd").with(
+        'ensure'    => 'running',
+        'enable'    => 'true'
+        )
+      }
+    end
+
+    context "with $service_ensure => 'stopped'" do
+      let (:params) {{ :service_ensure => 'stopped', }}
+      it { should contain_service("httpd").with(
+        'ensure'    => 'stopped',
+        'enable'    => 'true'
+        )
+      }
     end
   end
 
@@ -54,7 +70,7 @@ describe 'apache::service', :type => :class do
       }
     end
     it { should contain_service("httpd").with(
-      'ensure'    => 'true',
+      'ensure'    => 'running',
       'enable'    => 'true'
       )
     }

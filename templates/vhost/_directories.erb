@@ -41,6 +41,9 @@
     <%- if directory['passenger_enabled'] and directory['passenger_enabled'] != '' -%>
     PassengerEnabled <%= directory['passenger_enabled'] %>
     <%- end -%>
+    <%- if directory['directoryindex'] and directory['directoryindex'] != '' -%>
+    DirectoryIndex <%= directory['directoryindex'] %>
+    <%- end -%>
     <%- if directory['auth_type'] -%>
     AuthType <%= directory['auth_type'] %>
     <%- end -%>
@@ -79,6 +82,9 @@
     <%- end -%>
     <%- if directory['auth_require'] -%>
     Require <%= directory['auth_require'] %>
+    <%- end -%>
+    <%- if directory['fallbackresource'] -%>
+    FallbackResource <%= directory['fallbackresource'] %>
     <%- end -%>
     <%- if directory['custom_fragment'] -%>
     <%= directory['custom_fragment'] %>

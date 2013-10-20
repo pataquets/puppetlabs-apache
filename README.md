@@ -148,6 +148,18 @@ To set up a virtual host with WSGI
     }
 ```
 
+Starting 2.2.16, httpd supports [FallbackResource](https://httpd.apache.org/docs/2.2/mod/mod_dir.html#fallbackresource) which is a simple replace for common RewriteRules:
+
+```puppet
+    apache::vhost { 'wordpress.example.com':
+      port                => '80',
+      docroot             => '/var/www/wordpress',
+      fallbackresource    => '/index.php',
+    }
+```
+
+Please note that the `disabled` argument to FallbackResource is only supported since 2.2.24.
+
 To see a list of all virtual host parameters, [please go here](#defined-type-apachevhost). To see an extensive list of virtual host examples [please look here](#virtual-host-examples).
 
 ##Usage
@@ -217,7 +229,15 @@ The default certificate revocation list to use, which is automatically set to 'u
 
 #####`service_enable`
 
-Determines whether the 'httpd' service is enabled when the machine is booted, meaning Puppet will check the service status to start/stop it. Defaults to 'true', meaning the service is enabled/running.
+Determines whether the 'httpd' service is enabled when the machine is booted. Defaults to 'true'.
+
+#####`service_ensure`
+
+Determines whether the service should be running. Can be set to 'undef' which is useful when you want to let the service be managed by some other application like pacemaker. Defaults to 'running'.
+
+#####`purge_configs`
+
+Removes all other apache configs and vhosts, which is automatically set to true. Setting this to false is a stopgap measure to allow the apache module to coexist with existing or otherwise managed configuration. It is recommended that you move your configuration entirely to resources within this module.
 
 #####`serveradmin`
 
@@ -229,7 +249,7 @@ Sets the servername. Defaults to fqdn provided by facter.
 
 #####`sendfile`
 
-Makes Apache use the Linux kernel 'sendfile' to serve static files. Defaults to 'false'.
+Makes Apache use the Linux kernel 'sendfile' to serve static files. Defaults to 'On'.
 
 #####`error_documents`
 
@@ -237,7 +257,7 @@ Enables custom error documents. Defaults to 'false'.
 
 #####`httpd_dir`
 
-Changes the base location of the configuration directories used for the service. This is useful for specially repackaged HTTPD builds but may have unintended concequences when used in combination with the default distribution packages. Default is based on your OS.
+Changes the base location of the configuration directories used for the service. This is useful for specially repackaged HTTPD builds but may have unintended consequences when used in combination with the default distribution packages. Default is based on your OS.
 
 #####`confd_dir`
 
@@ -282,6 +302,18 @@ Controls how much information Apache sends to the browser about itself and the o
 #####`server_signature`
 
 Allows the configuration of a trailing footer line under server-generated documents. See Apache documentation for 'ServerSignature'. Defaults to 'On'.
+
+#####`manage_user`
+
+Setting this to false will avoid the user resource to be created by this module. This is useful when you already have a user created in another puppet module and that you want to used it to run apache. Without this, it would result in a duplicate resource error. 
+
+#####`manage_group`
+
+Setting this to false will avoid the group resource to be created by this module. This is useful when you already have a group created in another puppet module and that you want to used it for apache. Without this, it would result in a duplicate resource error. 
+
+#####`package_ensure`
+
+Allow control over the package ensure statement. This is useful if you want to make sure apache is always at the latest version or whether it is only installed.
 
 ####Class: `apache::default_mods`
 
@@ -328,6 +360,7 @@ There are many `apache::mod::[name]` classes within this module that can be decl
 * `php` (requires [`mpm_module`](#mpm_module) set to `prefork`)
 * `prefork`*
 * `proxy`*
+* `proxy_ajp`
 * `proxy_html`
 * `proxy_http`
 * `python`
@@ -529,7 +562,7 @@ Sets the order of processing `Allow` and `Deny` statements as per [Apache core d
 ```puppet
     apache::vhost { 'sample.example.net':
       docroot     => '/path/to/directory',
-      directories => [ { path => '/path/to/directory', order => 'Allow, Deny' } ],
+      directories => [ { path => '/path/to/directory', order => 'Allow,Deny' } ],
     }
 ```
 
@@ -621,6 +654,10 @@ Sets the value for the `PassengerEnabled` directory to `on` or `off` as per the 
 
 Pass a string of custom configuration directives to be placed at the end of the
 directory configuration.
+
+#####`directoryindex`
+
+Set a DirectoryIndex directive, to set the list of resources to look for, when the client requests an index of the directory by specifying a / at the end of the directory name..
 
 #####`docroot`
 
@@ -841,9 +878,21 @@ Specifies the certificate authority.
 
 Specifies the SSL certification.
 
+#####`ssl_protocol`
+
+Specifies the SSL Protocol (SSLProtocol).
+
+#####`ssl_cipher`
+
+Specifies the SSLCipherSuite.
+
+#####`ssl_honorcipherorder`
+
+Sets SSLHonorCipherOrder directive, used to prefer the server's cipher preference order
+
 #####`ssl_certs_dir`
 
-Specifies the location of the SSL certification directory. Defaults to `/etc/ssl/certs`.
+Specifies the location of the SSL certification directory. Defaults to `/etc/ssl/certs` on Debian and `/etc/pki/tls/certs` on RedHat.
 
 #####`ssl_chain`
 
@@ -860,6 +909,50 @@ Specifies the location of the certificate revocation list.
 #####`ssl_key`
 
 Specifies the SSL key.
+
+#####`ssl_verify_client`
+
+Sets `SSLVerifyClient` directives as per the [Apache Core documentation](http://httpd.apache.org/docs/2.2/mod/mod_ssl.html#sslverifyclient). Defaults to undef.
+An example:
+
+```puppet
+    apache::vhost { 'sample.example.net':
+      …
+      ssl_verify_client => 'optional',
+    }
+```
+
+#####`ssl_verify_depth`
+
+Sets `SSLVerifyDepth` directives as per the [Apache Core documentation](http://httpd.apache.org/docs/2.2/mod/mod_ssl.html#sslverifydepth). Defaults to undef.
+An example:
+
+```puppet
+    apache::vhost { 'sample.example.net':
+      …
+      ssl_verify_depth => 1,
+    }
+```
+
+#####`ssl_options`
+
+Sets `SSLVerifyOptions` directives as per the [Apache Core documentation](http://httpd.apache.org/docs/2.2/mod/mod_ssl.html#ssloptions). This is the global setting for the vhost and can be a string or an array. Defaults to undef. A single string example:
+
+```puppet
+    apache::vhost { 'sample.example.net':
+      …
+      ssl_options => '+StdEnvVars',
+    }
+```
+
+An array of strings example:
+
+```puppet
+    apache::vhost { 'sample.example.net':
+      …
+      ssl_options => [ '+StdEnvVars', '+ExportCertData' ],
+    }
+```
 
 #####`sslproxyengine`
 

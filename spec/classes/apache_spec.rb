@@ -11,7 +11,8 @@ describe 'apache', :type => :class do
     end
     it { should include_class("apache::params") }
     it { should contain_package("httpd").with(
-      'notify' => 'Class[Apache::Service]'
+      'notify' => 'Class[Apache::Service]',
+      'ensure' => 'installed'
       )
     }
     it { should contain_user("www-data") }
@@ -102,6 +103,26 @@ describe 'apache', :type => :class do
         'target' => "/etc/apache2/mods-available/#{modname}.conf"
       ) }
     end
+    describe "Don't create user resource" do
+      context "when parameter manage_user is false" do
+        let :params do
+          { :manage_user => false }
+        end
+
+        it { should_not contain_user('www-data') }
+        it { should contain_file("/etc/apache2/apache2.conf").with_content %r{^User www-data\n} }
+      end
+    end
+    describe "Don't create group resource" do
+      context "when parameter manage_group is false" do
+        let :params do
+          { :manage_group => false }
+        end
+
+        it { should_not contain_group('www-data') }
+        it { should contain_file("/etc/apache2/apache2.conf").with_content %r{^Group www-data\n} }
+      end
+    end
   end
   context "on a RedHat 5 OS" do
     let :facts do
@@ -113,7 +134,8 @@ describe 'apache', :type => :class do
     end
     it { should include_class("apache::params") }
     it { should contain_package("httpd").with(
-      'notify' => 'Class[Apache::Service]'
+      'notify' => 'Class[Apache::Service]',
+      'ensure' => 'installed'
       )
     }
     it { should contain_user("apache") }
@@ -242,7 +264,7 @@ describe 'apache', :type => :class do
         let :params do
           { :mpm_module => 'breakme' }
         end
-        it { expect { should contain_class('apache::params') }.to raise_error Puppet::Error, /does not match/ }
+        it { expect { subject }.to raise_error Puppet::Error, /does not match/ }
       end
     end
 
@@ -286,6 +308,51 @@ describe 'apache', :type => :class do
         it { should contain_apache__mod('env') }
         it { should contain_class('apache::mod::info') }
         it { should contain_class('apache::mod::mime') }
+      end
+    end
+    describe "Don't create user resource" do
+      context "when parameter manage_user is false" do
+        let :params do
+          { :manage_user => false }
+        end
+
+        it { should_not contain_user('apache') }
+        it { should contain_file("/etc/httpd/conf/httpd.conf").with_content %r{^User apache\n} }
+      end
+    end
+    describe "Don't create group resource" do
+      context "when parameter manage_group is false" do
+        let :params do
+          { :manage_group => false }
+        end
+
+        it { should_not contain_group('apache') }
+        it { should contain_file("/etc/httpd/conf/httpd.conf").with_content %r{^Group apache\n} }
+
+      end
+    end
+    describe "sendfile" do
+      context "with invalid value" do
+        let :params do
+          { :sendfile => 'foo' }
+        end
+        it "should fail" do
+          expect do
+            subject
+          end.to raise_error(Puppet::Error, /"foo" does not match/)
+        end
+      end
+      context "On" do
+        let :params do
+          { :sendfile => 'On' }
+        end
+        it { should contain_file("/etc/httpd/conf/httpd.conf").with_content %r{^EnableSendfile On\n} }
+      end
+      context "Off" do
+        let :params do
+          { :sendfile => 'Off' }
+        end
+        it { should contain_file("/etc/httpd/conf/httpd.conf").with_content %r{^EnableSendfile Off\n} }
       end
     end
   end

@@ -157,9 +157,7 @@ ErrorLog <%= @logroot %>/<%= @error_log %>
 # alert, emerg.
 #
 LogLevel warn
-<% if @sendfile %>
 EnableSendfile <%= @sendfile %>
-<% end %>
 
 #Listen 80
 Include <%= @mod_load_dir %>/*.load

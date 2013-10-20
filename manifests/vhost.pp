@@ -75,12 +75,19 @@ define apache::vhost(
     $ssl_crl_path                = $apache::default_ssl_crl_path,
     $ssl_crl                     = $apache::default_ssl_crl,
     $ssl_certs_dir               = $apache::params::ssl_certs_dir,
+    $ssl_protocol                = undef,
+    $ssl_cipher                  = undef,
+    $ssl_honorcipherorder        = undef,
+    $ssl_verify_client           = undef,
+    $ssl_verify_depth            = undef,
+    $ssl_options                 = undef,
     $priority                    = undef,
     $default_vhost               = false,
     $servername                  = $name,
     $serveraliases               = [],
     $options                     = ['Indexes','FollowSymLinks','MultiViews'],
     $override                    = ['None'],
+    $directoryindex              = '',
     $vhost_name                  = '*',
     $logroot                     = $apache::logroot,
     $access_log                  = true,
@@ -94,6 +101,7 @@ define apache::vhost(
     $error_log_file              = undef,
     $error_log_pipe              = undef,
     $error_log_syslog            = undef,
+    $fallbackresource            = undef,
     $scriptalias                 = undef,
     $proxy_dest                  = undef,
     $proxy_pass                  = undef,
@@ -154,6 +162,10 @@ define apache::vhost(
 
   if $error_log_file and $error_log_pipe {
     fail("Apache::Vhost[${name}]: 'error_log_file' and 'error_log_pipe' cannot be defined at the same time")
+  }
+
+  if $fallbackresource {
+    validate_re($fallbackresource, '^/|disabled', 'Please make sure fallbackresource starts with a / (or is "disabled")')
   }
 
   if $ssl {
@@ -315,6 +327,7 @@ define apache::vhost(
       path           => $docroot,
       options        => $options,
       allow_override => $override,
+      directoryindex => $directoryindex,
       order          => 'allow,deny',
       allow          => 'from all',
     } ]
@@ -337,6 +350,7 @@ define apache::vhost(
   # - $_access_log_format
   # - $error_log
   # - $error_log_destination
+  # - $fallbackresource
   # - $custom_fragment
   # block fragment:
   #   - $block
@@ -374,6 +388,9 @@ define apache::vhost(
   #   - $ssl_ca
   #   - $ssl_crl
   #   - $ssl_crl_path
+  #   - $ssl_verify_client
+  #   - $ssl_verify_depth
+  #   - $ssl_options
   # suphp fragment:
   #   - $suphp_addhandler
   #   - $suphp_engine
@@ -401,7 +418,7 @@ define apache::vhost(
     $vhost_symlink_ensure = $ensure ? {
       present => link,
       default => $ensure,
-	}
+    }
     file{ "${priority_real}-${filename}.conf symlink":
       ensure  => $vhost_symlink_ensure,
       path    => "${vhost_enable_dir}/${priority_real}-${filename}.conf",
